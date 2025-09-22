@@ -1,0 +1,14 @@
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.backup
+crash.log
+override.tf
+terraform.tfvars
+
+# Credentials / keys
+*.json
+*.pem
+
+# macOS
+.DS_Store
