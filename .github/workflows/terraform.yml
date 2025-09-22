@@ -1,8 +1,12 @@
 name: Terraform - GKE Infra
+
 on:
   workflow_dispatch: {}
   push:
-    paths: ['terraform/**']
+    branches: [ "main" ]
+    paths:
+      - 'terraform/**'
+      - '.github/workflows/terraform.yml'
 
 env:
   PROJECT_ID:      ${{ secrets.GCP_PROJECT_ID }}
@@ -13,8 +17,10 @@ env:
 jobs:
   apply:
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
       - name: Auth to GCP
         uses: google-github-actions/auth@v2
@@ -25,12 +31,6 @@ jobs:
         uses: google-github-actions/setup-gcloud@v2
         with:
           project_id: ${{ env.PROJECT_ID }}
-
-      - name: Ensure TF state bucket exists
-        run: |
-          if ! gsutil ls -b gs://${TF_STATE_BUCKET} >/dev/null 2>&1; then
-            gsutil mb -l ${REGION} gs://${TF_STATE_BUCKET}
-          fi
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
@@ -58,4 +58,5 @@ jobs:
             -var="name=demo"
 
       - name: Show Outputs
-        run: terraform -chdir=terraform output
+        run: terraform -chdir=terraform output -json
+
