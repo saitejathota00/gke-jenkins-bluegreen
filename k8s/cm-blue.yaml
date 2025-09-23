@@ -17,9 +17,9 @@ data:
       </style>
     </head>
     <body>
-      <h1>BLUE ENV</h1>
-      <p class="pill">Serving: BLUE</p>
-      <p>Deployed via Jenkins blue-green pipeline.</p>
+      <h1>BLUE</h1>
+      <p>Blue environment is serving.</p>
+      <div class="pill">version: v1-blue</div>
     </body>
     </html>
 
