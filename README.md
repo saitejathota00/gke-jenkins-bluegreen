@@ -150,4 +150,43 @@ The pipeline implements **blue-green deployments** with minimal downtime:
 
 
 
+## ✅ Demonstration
+
+### 1. Auto-scaling
+- Load generated via `loadgen` deployment  
+- HPA scaled `web-blue` pods from 2 → 4 during traffic  
+- Scaled back down when load stopped  
+
+(Screenshot reference: `proof-hpa-scale.png`)  
+
+### 2. Blue-Green Deployment
+- Initial live environment: **blue**  
+- Jenkins pipeline deployed **green**  
+- Service selector switched → minimal downtime  
+- ConfigMap HTML verified pod color responses  
+
+(Screenshot reference: `proof-blue-green-switch.png`)  
+
+---
+
+## 🧩 Approach & Challenges
+
+- **Approach**:  
+  - Infrastructure = Terraform (via GitHub Actions)  
+  - Application = Jenkins (manual trigger + webhook configured)  
+  - Blue-Green = Service selector flip between `blue` and `green`  
+  - HPA = Stress test with synthetic load generator  
+
+- **Challenges**:  
+  - Correct IAM permissions for Jenkins SA (`iam.serviceAccountUser` required).  
+  - `metrics-server` configuration to expose CPU metrics for HPA.  
+  - ConfigMap mounting — initially both deployments served default Nginx page.  
+  - Artifact Registry ImagePull errors — fixed by authenticating Docker in Jenkins pipeline.  
+
+📌 **Note:** All **screenshots, logs, and process documentation** are provided in a **separate document** (attached with the submission email) to keep the repository clean and focused.
+
+
+
+
+
 
