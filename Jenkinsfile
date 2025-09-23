@@ -1,4 +1,4 @@
-// Jenkinsfile — GKE Blue/Green with safe sh blocks (no $ interpolation issues)
+// Jenkinsfile — GKE Blue/Green Deployment (clean & fixed)
 pipeline {
   agent any
 
@@ -14,14 +14,13 @@ pipeline {
     IMAGE_NAME = 'web'
     IMAGE_URI  = "${GAR_REGION}-docker.pkg.dev/${PROJECT}/${GAR_REPO}/${IMAGE_NAME}"
 
-    GCP_SA_CRED_ID = 'gcp-sa' // Jenkins credential id for SA JSON
+    GCP_SA_CRED_ID = 'gcp-sa'
   }
 
   options {
     buildDiscarder(logRotator(numToKeepStr: '20'))
     disableConcurrentBuilds()
     timestamps()
-    ansiColor('xterm')
   }
 
   stages {
@@ -73,7 +72,7 @@ pipeline {
               kubectl -n "$NAMESPACE" get svc web -o jsonpath="{.spec.selector.color}" 2>/dev/null || echo ""
             '''
           ).trim()
-          if (!currentColor) { currentColor = "blue" } // sane default if missing
+          if (!currentColor) { currentColor = "blue" } // safe default
           env.CURRENT_COLOR = currentColor
           env.TARGET_COLOR  = (currentColor == "green") ? "blue" : "green"
           echo "CURRENT_COLOR=${env.CURRENT_COLOR}, TARGET_COLOR=${env.TARGET_COLOR}"
@@ -85,13 +84,8 @@ pipeline {
       steps {
         sh '''#!/bin/bash -l
           set -euxo pipefail
-          # Apply static YAML for the target color (labels must be app=web,color=<color>)
           kubectl -n "$NAMESPACE" apply -f "k8s/deploy-$TARGET_COLOR.yaml"
-
-          # Update image for target deployment
           kubectl -n "$NAMESPACE" set image deploy/web-$TARGET_COLOR nginx="$IMAGE_URI:$IMAGE_TAG" --record
-
-          # Wait for rollout to complete
           kubectl -n "$NAMESPACE" rollout status deploy/web-$TARGET_COLOR --timeout=180s
         '''
       }
@@ -116,7 +110,6 @@ pipeline {
       steps {
         sh '''#!/bin/bash -l
           set -euxo pipefail
-          # Create LB Service if missing (defaults to blue; pipeline will flip it)
           kubectl -n "$NAMESPACE" get svc web >/dev/null 2>&1 || kubectl -n "$NAMESPACE" apply -f k8s/service.yaml
         '''
       }
@@ -136,12 +129,9 @@ pipeline {
       steps {
         sh '''#!/bin/bash -l
           set -euxo pipefail
-          # give endpoints time to update
           sleep 5
-
           echo "Service selector:"
           kubectl -n "$NAMESPACE" get svc web -o jsonpath='{.spec.selector}' ; echo
-
           echo "Service endpoints:"
           kubectl -n "$NAMESPACE" get endpoints web -o jsonpath='{.subsets[*].addresses[*].ip}' ; echo
 
@@ -150,7 +140,6 @@ pipeline {
           echo "TARGET_IPS: $TARGET_IPS"
           echo "EP_IPS: $EP_IPS"
 
-          # Assert every endpoint belongs to the target color
           for ip in $EP_IPS; do
             echo "$TARGET_IPS" | grep -qw "$ip"
           done
@@ -160,12 +149,11 @@ pipeline {
             echo "External IP: $EXT_IP — curling /"
             curl -fsS --max-time 8 "http://$EXT_IP/" | head -n 20 || true
           fi
-
           echo "Post-switch verification passed."
         '''
       }
     }
-  } // stages
+  }
 
   post {
     success {
