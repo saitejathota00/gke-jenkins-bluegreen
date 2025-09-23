@@ -147,8 +147,7 @@ The pipeline implements **blue-green deployments** with minimal downtime:
 * ✅ Blue-Green strategy with minimal downtime
 * ✅ Autoscaling with HPA + synthetic traffic (loadgen)
 
----
 
 
-```
+
 
