@@ -35,6 +35,7 @@ We used two service accounts to separate responsibilities:
      - `roles/artifactregistry.admin`
      - `roles/iam.serviceAccountUser`
    - Credentials are handled as a **GitHub Actions secret** (`GCP_TF_KEY`).
+   NOTE : terrfform state flie is in GCS bucket 
 
 2. **Jenkins Deployer (`jenkins-deployer`)**
    - Used by **Jenkins pipeline** for image builds and GKE deployments.
