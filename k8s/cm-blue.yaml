@@ -1,0 +1,25 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: web-blue-html
+  namespace: demo
+data:
+  index.html: |
+    <!doctype html>
+    <html>
+    <head>
+      <title>BLUE</title>
+      <style>
+        body { font-family: Arial, sans-serif; text-align:center; padding: 6rem; background:#0a2540; color:#fff; }
+        h1 { font-size: 64px; margin-bottom: 1rem; }
+        p  { font-size: 20px; opacity: .9; }
+        .pill { display:inline-block; padding:.5rem 1rem; border:2px solid #fff; border-radius:999px; }
+      </style>
+    </head>
+    <body>
+      <h1>BLUE ENV</h1>
+      <p class="pill">Serving: BLUE</p>
+      <p>Deployed via Jenkins blue-green pipeline.</p>
+    </body>
+    </html>
+
