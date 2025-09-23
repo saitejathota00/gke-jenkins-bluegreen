@@ -1,4 +1,4 @@
-// Jenkinsfile — GKE Blue/Green Deployment (clean & fixed)
+// Jenkinsfile — GKE Blue/Green Deployment 
 pipeline {
   agent any
 
