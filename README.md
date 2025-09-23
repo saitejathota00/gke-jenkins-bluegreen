@@ -179,8 +179,10 @@ The pipeline implements **blue-green deployments** with minimal downtime:
   - HPA = Stress test with synthetic load generator  
 
 - **Challenges**:  
-  - Correct IAM permissions for Jenkins SA (`iam.serviceAccountUser` required).  
-  - `metrics-server` configuration to expose CPU metrics for HPA.  
+ - Correct IAM permissions for the Jenkins service account were a key challenge. Initially, the pipeline failed with a permission denied error when attempting to push to Artifact Registry. After reviewing the error logs  and GCP's IAM documentation, I identified that the roles/artifactregistry.writer role was missing. Granting this specific role to the jenkins-deployer service account resolved the issue and allowed the pipeline to      successfully push the Docker image. This process highlighted the importance of a least-privilege approach to IAM
+
+  - `metrics-server` configuration to expose CPU metrics for HPA.
+ 
   - ConfigMap mounting — initially both deployments served default Nginx page.  
   - Artifact Registry ImagePull errors — fixed by authenticating Docker in Jenkins pipeline.  
 
