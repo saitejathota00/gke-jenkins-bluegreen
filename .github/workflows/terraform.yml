@@ -12,7 +12,7 @@ on:
         required: true
         default: demo
       confirm:
-        description: 'Type exactly: I UNDERSTAND THIS WILL DELETE RESOURCES'
+        description: "Type exactly: I UNDERSTAND THIS WILL DELETE RESOURCES"
         required: true
         default: ""
 
@@ -35,26 +35,22 @@ jobs:
     steps:
       - name: Validate confirmation
         run: |
-          if [ "${{ github.event.inputs.confirm }}" != "I UNDERSTAND THIS WILL DELETE RESOURCES" ]; then
-            echo "::error::Confirmation text mismatch. Enter exactly: I UNDERSTAND THIS WILL DELETE RESOURCES"
+          if ! echo "${{ github.event.inputs.confirm }}" | grep -q '^I UNDERSTAND THIS WILL DELETE RESOURCES$'; then
+            echo "::error::Confirmation text mismatch. Please type: I UNDERSTAND THIS WILL DELETE RESOURCES"
             exit 1
           fi
 
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Auth to GCP
-        uses: google-github-actions/auth@v2
+      - uses: google-github-actions/auth@v2
         with:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
 
-      - name: Setup gcloud
-        uses: google-github-actions/setup-gcloud@v2
+      - uses: google-github-actions/setup-gcloud@v2
         with:
           project_id: ${{ env.PROJECT_ID }}
 
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
+      - uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: 1.9.5
 
@@ -78,8 +74,7 @@ jobs:
       - name: Show Plan Summary
         run: terraform -chdir="$DIR" show -no-color tfplan.destroy | tee "$DIR/destroy-plan.txt"
 
-      - name: Upload destroy plan
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
           name: tf-destroy-plan
           path: |
@@ -91,25 +86,21 @@ jobs:
     needs: plan
     runs-on: ubuntu-latest
     environment:
-      name: production   # Configure required reviewers in Repo Settings → Environments
+      name: production   # configure in repo Settings → Environments
     env:
       DIR:  ${{ github.event.inputs.directory }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Auth to GCP
-        uses: google-github-actions/auth@v2
+      - uses: google-github-actions/auth@v2
         with:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
 
-      - name: Setup gcloud
-        uses: google-github-actions/setup-gcloud@v2
+      - uses: google-github-actions/setup-gcloud@v2
         with:
           project_id: ${{ env.PROJECT_ID }}
 
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
+      - uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: 1.9.5
 
@@ -119,8 +110,7 @@ jobs:
             -backend-config="bucket=${TF_STATE_BUCKET}" \
             -backend-config="prefix=gke/state"
 
-      - name: Download plan
-        uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v4
         with:
           name: tf-destroy-plan
           path: ${{ github.event.inputs.directory }}
