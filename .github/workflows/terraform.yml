@@ -1,24 +1,11 @@
 name: Terraform Destroy - GKE Infra
 
 on:
-  workflow_dispatch:
-    inputs:
-      directory:
-        description: "Terraform root directory"
-        required: true
-        default: terraform
-      name:
-        description: "Name variable used by your stack"
-        required: true
-        default: demo
-      auto_approve:
-        description: "Skip manual approval? (true/false)"
-        required: false
-        default: "false"
-      confirm:
-        description: 'Type: I UNDERSTAND THIS WILL DELETE RESOURCES'
-        required: true
-        default: ""
+  push:
+    branches: [ "main" ]        # run on any commit to main
+  pull_request:
+    branches: [ "main" ]        # run on PRs into main (useful to catch issues early)
+  workflow_dispatch: {}          # keep manual trigger too
 
 env:
   PROJECT_ID:      ${{ secrets.GCP_PROJECT_ID }}
