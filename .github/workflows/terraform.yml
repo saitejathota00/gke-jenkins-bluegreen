@@ -1,12 +1,24 @@
-name: Terraform - GKE Infra
+name: Terraform Destroy - GKE Infra
 
 on:
-  workflow_dispatch: {}
-  push:
-    branches: [ "main" ]
-    paths:
-      - 'terraform/**'
-      - '.github/workflows/terraform.yml'
+  workflow_dispatch:
+    inputs:
+      directory:
+        description: "Terraform root directory"
+        required: true
+        default: terraform
+      name:
+        description: "Name variable used by your stack"
+        required: true
+        default: demo
+      auto_approve:
+        description: "Skip manual approval? (true/false)"
+        required: false
+        default: "false"
+      confirm:
+        description: 'Type: I UNDERSTAND THIS WILL DELETE RESOURCES'
+        required: true
+        default: ""
 
 env:
   PROJECT_ID:      ${{ secrets.GCP_PROJECT_ID }}
@@ -14,9 +26,18 @@ env:
   ZONE:            ${{ secrets.GCP_ZONE }}
   TF_STATE_BUCKET: ${{ secrets.TF_STATE_BUCKET }}
 
+concurrency:
+  group: tf-destroy-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
 jobs:
-  apply:
+  plan:
+    name: Plan (destroy)
     runs-on: ubuntu-latest
+    if: ${{ github.event.inputs.confirm == 'I UNDERSTAND THIS WILL DELETE RESOURCES' }}
 
     steps:
       - name: Checkout
@@ -37,26 +58,75 @@ jobs:
 
       - name: Terraform Init (GCS backend)
         run: |
-          terraform -chdir=terraform init \
+          terraform -chdir="${{ github.event.inputs.directory }}" init \
+            -input=false -reconfigure \
             -backend-config="bucket=${TF_STATE_BUCKET}" \
             -backend-config="prefix=gke/state"
 
-      - name: Terraform Plan
+      - name: Terraform Validate
+        run: terraform -chdir="${{ github.event.inputs.directory }}" validate
+
+      - name: Terraform Plan (destroy)
         run: |
-          terraform -chdir=terraform plan \
+          terraform -chdir="${{ github.event.inputs.directory }}" plan \
+            -destroy -input=false -out=tfplan.destroy \
             -var="project_id=${PROJECT_ID}" \
             -var="region=${REGION}" \
             -var="zone=${ZONE}" \
-            -var="name=demo"
+            -var="name=${{ github.event.inputs.name }}"
 
-      - name: Terraform Apply
+      - name: Show Plan Summary
         run: |
-          terraform -chdir=terraform apply -auto-approve \
-            -var="project_id=${PROJECT_ID}" \
-            -var="region=${REGION}" \
-            -var="zone=${ZONE}" \
-            -var="name=demo"
+          terraform -chdir="${{ github.event.inputs.directory }}" show -no-color tfplan.destroy | tee destroy-plan.txt
 
-      - name: Show Outputs
-        run: terraform -chdir=terraform output -json
+      - name: Upload destroy plan artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: tf-destroy-plan
+          path: |
+            ${{ github.event.inputs.directory }}/tfplan.destroy
+            destroy-plan.txt
+
+  apply:
+    name: Apply (destroy)
+    needs: plan
+    runs-on: ubuntu-latest
+    # Option A: require explicit toggle
+    if: ${{ needs.plan.result == 'success' && github.event.inputs.auto_approve == 'true' }}
+    # Option B (safer): gate with Protected Environment approval instead of auto_approve
+    environment:
+      name: production
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Auth to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Setup gcloud
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ env.PROJECT_ID }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform Init (GCS backend)
+        run: |
+          terraform -chdir="${{ github.event.inputs.directory }}" init \
+            -input=false -reconfigure \
+            -backend-config="bucket=${TF_STATE_BUCKET}" \
+            -backend-config="prefix=gke/state"
+
+      - name: Download plan
+        uses: actions/download-artifact@v4
+        with:
+          name: tf-destroy-plan
+          path: ${{ github.event.inputs.directory }}
+
+      - name: Terraform Apply (destroy)
+        run: terraform -chdir="${{ github.event.inputs.directory }}" apply -input=false -auto-approve tfplan.destroy
 
